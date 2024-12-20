@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gelişmiş Masa Tenisi Oyunu</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #1a1a1a;
+            font-family: 'Arial', sans-serif;
+            color: white;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            margin: 0 auto;
+            background-color: #222;
+            border: 2px solid #fff;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+        }
+
+        #scoreboard {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        #gameTitle {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 32px;
+            color: #FFD700;
+        }
+
+        .settings-btn {
+            position: absolute;
+            top: 10px;
+            left: 20px;
+            cursor: pointer;
+            font-size: 28px;
+            color: white;
+            background-color: transparent;
+            border: none;
+            outline: none;
+        }
+
+        #settingsPanel {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 8px;
+            color: white;
+        }
+
+        .settings-panel-content {
+            margin-bottom: 20px;
+        }
+
+        .settings-btn, .close-btn {
+            font-size: 18px;
+            cursor: pointer;
+            color: #FFD700;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+        }
+
+        .slider {
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameTitle">Gelişmiş Masa Tenisi</div>
+    <div id="scoreboard">Skor: 0 | Bot: 0</div>
+    <button class="settings-btn" id="settingsBtn">&#9881;</button>
+
+    <div id="settingsPanel">
+        <div class="settings-panel-content">
+            <label for="volumeControl">Ses Seviyesi:</label>
+            <input type="range" id="volumeControl" class="slider" min="0" max="1" step="0.1" value="0.5">
+        </div>
+        <div class="settings-panel-content">
+            <label for="difficultySelect">Zorluk:</label>
+            <select id="difficultySelect">
+                <option value="1">Kolay</option>
+                <option value="2">Orta</option>
+                <option value="3">Zor</option>
+            </select>
+        </div>
+        <button class="close-btn" id="closeSettingsBtn">Kapat</button>
+    </div>
+
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+    <script>
+        let canvas = document.getElementById("gameCanvas");
+        let ctx = canvas.getContext("2d");
+
+        // Ses dosyaları
+        const hitSound = new Audio('https://example.com/sounds/hit_sound.mp3'); 
+        const wallSound = new Audio('https://example.com/sounds/wall_hit.mp3');
+        const scoreSound = new Audio('https://example.com/sounds/score_sound.mp3');
+        const backgroundMusic = new Audio('https://example.com/sounds/background_music.mp3');
+        backgroundMusic.loop = true;
+        backgroundMusic.play();
+
+        // Oyun verileri
+        let playerScore = 0;
+        let botScore = 0;
+        let ballSpeed = 3;
+        let playerPaddle = { x: 10, y: canvas.height / 2 - 50, width: 10, height: 100 };
+        let botPaddle = { x: canvas.width - 20, y: canvas.height / 2 - 50, width: 10, height: 100 };
+        let ball = { x: canvas.width / 2, y: canvas.height / 2, radius: 8, dx: ballSpeed, dy: ballSpeed };
+
+        // Başlangıç
+        function startGame() {
+            gameLoop();
+        }
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ball.x += ball.dx;
+            ball.y += ball.dy;
+
+            // Top duvara çarpma
+            if (ball.y + ball.dy > canvas.height - ball.radius || ball.y + ball.dy < ball.radius) {
+                ball.dy = -ball.dy;
+                wallSound.play();
+            }
+
+            // Skor kontrolü
+            if (ball.x + ball.dx > canvas.width - ball.radius) {
+                playerScore++;
+                scoreSound.play();
+                resetBall();
+            }
+            if (ball.x + ball.dx < ball.radius) {
+                botScore++;
+                scoreSound.play();
+                resetBall();
+            }
+
+            // Raketler çizme
+            drawPaddle(playerPaddle);
+            drawPaddle(botPaddle);
+
+            // Top çizme
+            drawBall();
+            drawScore();
+
+            // Bot hareketi
+            botMove();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function drawPaddle(paddle) {
+            ctx.fillStyle = "#FFF";
+            ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
+        }
+
+        function drawBall() {
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+            ctx.fillStyle = "#FF6347";
+            ctx.fill();
+            ctx.closePath();
+        }
+
+        function drawScore() {
+            ctx.font = "20px Arial";
+            ctx.fillText("Skor: " + playerScore, 20, 30);
+            ctx.fillText("Bot Skor: " + botScore, canvas.width - 150, 30);
+        }
+
+        function botMove() {
+            let botCenter = botPaddle.y + botPaddle.height / 2;
+            if (ball.y < botCenter - 35) {
+                botPaddle.y -= 3;
+            } else if (ball.y > botCenter + 35) {
+                botPaddle.y += 3;
+            }
+        }
+
+        function resetBall() {
+            ball.x = canvas.width / 2;
+            ball.y = canvas.height / 2;
+            ball.dx = ballSpeed;
+            ball.dy = ballSpeed;
+        }
+
+        // Kullanıcı hareketi
+        document.addEventListener("mousemove", function(event) {
+            let mouseY = event.clientY - canvas.offsetTop;
+            if (mouseY > 0 && mouseY < canvas.height) {
+                playerPaddle.y = mouseY - playerPaddle.height / 2;
+            }
+        });
+
+        // Ayar paneli açma ve kapama
+        const settingsBtn = document.getElementById("settingsBtn");
+        const settingsPanel = document.getElementById("settingsPanel");
+        const closeSettingsBtn = document.getElementById("closeSettingsBtn");
+
+        settingsBtn.addEventListener("click", function() {
+            settingsPanel.style.display = "block";
+        });
+
+        closeSettingsBtn.addEventListener("click", function() {
+            settingsPanel.style.display = "none";
+        });
+
+        // Ses kontrolü
+        const volumeControl = document.getElementById("volumeControl");
+        volumeControl.addEventListener("input", function() {
+            let volume = volumeControl.value;
+            hitSound.volume = volume;
+            wallSound.volume = volume;
+            scoreSound.volume = volume;
+            backgroundMusic.volume = volume;
+        });
+
+        // Zorluk seçimi
+        const difficultySelect = document.getElementById("difficultySelect");
+        difficultySelect.addEventListener("change", function() {
+            let difficulty = difficultySelect.value;
+            if (difficulty == "1") {
+                ballSpeed = 3;
+            } else if (difficulty == "2") {
+                ballSpeed = 4;
+            } else if (difficulty == "3") {
+                ballSpeed = 5;
+            }
+            resetBall();
+        });
+
+        // Oyun başladığında
+        startGame();
+    </script>
+</body>
+</html>
